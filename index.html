@@ -20,22 +20,28 @@
     /* MAIN */
     .container { padding: 20px; text-align: center; min-height: 70vh; }
     h1 { font-size: 28px; margin-bottom: 10px; }
-    .btn { background: #fff; color: #000; padding: 18px 40px; border-radius: 50px; font-size: 18px; font-weight: bold; border: none; margin: 20px 0; width: 90%; max-width: 300px; }
-    .btn:disabled { background: #333; color: #666; }
+    
+    /* BUTTONS */
+    .plus-btn { background: #fff; color: #000; width: 80px; height: 80px; border-radius: 50%; font-size: 40px; border: none; margin: 20px auto; display: flex; align-items: center; justify-content: center; }
+    .process-btn { background: #0f0; color: #000; padding: 16px 40px; border-radius: 50px; font-size: 18px; font-weight: bold; border: none; margin: 10px 0; width: 90%; max-width: 300px; display: none; }
+    .process-btn:disabled { background: #333; color: #666; }
+    
     .trust { font-size: 11px; color: #666; }
     .req { font-size: 14px; color: #0f0; margin: 10px; }
+    .file-name { color: #0f0; font-size: 14px; margin-top: -10px; word-break: break-all; padding: 0 10px; }
+    
+    /* LOADER */
+    .loader { border: 4px solid #333; border-top: 4px solid #0f0; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     
     /* LANGUAGE CARDS */
     .lang { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 15px; background: #1a1a1a; border-radius: 12px; }
-    .lang a { background: #fff; color: #000; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+    .lang-info { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+    .download-btn { background: #fff; color: #000; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; border: none; cursor: pointer; }
     
     /* FOOTER */
     footer { padding: 20px; text-align: center; color: #666; font-size: 12px; }
     .affiliate { background: #FF0000; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; margin: 10px; }
-    
-    /* AD MODAL */
-    #adModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000e; z-index: 200; }
-    #adBox { background:#111; margin:15% auto; padding:20px; width:90%; border-radius:12px; }
   </style>
 </head>
 <body>
@@ -63,32 +69,29 @@
   <p>AI Subtitles in 5 Languages. 5MB Data Only.</p>
 
   <input type="file" id="videoInput" accept="video/*" style="display:none">
-  <button class="btn" id="processBtn" onclick="document.getElementById('videoInput').click()">+ PROCESS VIDEO</button>
+  <button class="plus-btn" onclick="document.getElementById('videoInput').click()">+</button>
+  <p class="file-name" id="fileName"></p>
+  
+  <button class="process-btn" id="processBtn">PROCESS VIDEO</button>
   <p class="trust">THIS PROCESSED BY GEMINI</p>
   <p class="req" id="requests">Free requests left: 3</p>
-
+  
+  <div class="loader" id="loader"></div>
   <div id="downloads"></div>
 
   <footer>
     <p>Fast. Private. No Video Upload.</p>
-    <a href="YOUR_AFFILIATE_LINK" class="affiliate">WATCH HERE</a>
+    <a href="#" onclick="alert('Coming Soon')" class="affiliate">WATCH HERE</a>
   </footer>
 
   <!-- BOTTOM AD -->
   <script src="https://potterynaggingformerly.com/4c/e3/be/4ce3beb716c312a093c145adf4d5c5e5.js"></script>
 </div>
 
-<!-- DOWNLOAD AD POPUP -->
-<div id="adModal">
-  <div id="adBox">
-    <script src="https://potterynaggingformerly.com/04/e6/5a/04e65a13e9cb1f4e5641518fea30aa6e.js"></script>
-    <button onclick="closeAd()" style="margin-top:10px; width:100%; padding:10px">Cancel in 5s</button>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 <script>
-const API_URL = 'https://wy-sub.vercel.app/api/subtitle'; // ✅ YOUR LIVE API
+const API_URL = 'https://wy-sub.vercel.app/api/subtitle';
+const SMARTLINK = 'https://potterynaggingformerly.com/zc8d0546ft?key=082d573b4743dc2b0111e797b8b2e4c0'; // ✅ YOUR SMARTLINK
 
 const LANGUAGES = [
   {code:'en', name:'English', flag:'🇺🇸'},
@@ -106,12 +109,12 @@ updateRequests();
 
 const { createFFmpeg, fetchFile } = FFmpeg;
 const ffmpeg = createFFmpeg({ log: false });
+let selectedFile = null;
 
 function updateRequests(){
   document.getElementById('requests').innerText = `Free requests left: ${requests}`;
   localStorage.setItem('wysub_requests', requests);
   document.getElementById('processBtn').disabled = requests <= 0;
-  if(requests <= 0) document.getElementById('processBtn').innerText = "NO FREE REQUESTS";
 }
 
 function toggleMenu(){ document.getElementById('menu').classList.toggle('active'); }
@@ -120,32 +123,39 @@ function toggleMenu(){ document.getElementById('menu').classList.toggle('active'
 let startY = 0;
 document.addEventListener('touchstart', e => startY = e.touches[0].clientY);
 document.addEventListener('touchmove', e => {
-  if(window.scrollY === 0 && e.touches[0].clientY - startY > 80){
-    document.getElementById('pull').style.display = 'block';
-  }
+  if(window.scrollY === 0 && e.touches[0].clientY - startY > 80) document.getElementById('pull').style.display = 'block';
 });
 document.addEventListener('touchend', e => {
-  if(document.getElementById('pull').style.display === 'block'){
-    location.reload();
-  }
+  if(document.getElementById('pull').style.display === 'block') location.reload();
   document.getElementById('pull').style.display = 'none';
 });
 
-document.getElementById('videoInput').onchange = async (e) => {
+// STEP 1: ADD VIDEO
+document.getElementById('videoInput').onchange = (e) => {
+  selectedFile = e.target.files[0];
+  document.getElementById('fileName').innerText = `📹 ${selectedFile.name}`;
+  document.getElementById('processBtn').style.display = 'block'; // Show process button
+  document.getElementById('downloads').innerHTML = ''; // Clear old results
+}
+
+// STEP 2: PROCESS VIDEO
+document.getElementById('processBtn').onclick = async () => {
   if(requests <= 0) return alert("Daily limit reached. Come back tomorrow");
+  if(!selectedFile) return;
   
-  const file = e.target.files[0];
   document.getElementById('processBtn').innerText = "Processing...";
+  document.getElementById('processBtn').disabled = true;
+  document.getElementById('loader').style.display = 'block'; // Show spinner
   
   if(!ffmpeg.isLoaded()) await ffmpeg.load();
-  ffmpeg.FS('writeFile', 'video.mp4', await fetchFile(file));
+  ffmpeg.FS('writeFile', 'video.mp4', await fetchFile(selectedFile));
   await ffmpeg.run('-i', 'video.mp4', '-vn', '-acodec', 'libmp3lame', '-q:a', '9', 'audio.mp3');
   const audioData = ffmpeg.FS('readFile', 'audio.mp3');
   const audioBase64 = btoa(String.fromCharCode(...audioData));
   
   let html = '';
   for(let lang of LANGUAGES){
-    const res = await fetch(API_URL, { // ✅ USING YOUR LIVE LINK
+    const res = await fetch(API_URL, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({audioBase64, language: lang.name})
@@ -153,22 +163,31 @@ document.getElementById('videoInput').onchange = async (e) => {
     const data = await res.json();
     const blob = new Blob([data.srt], {type: 'text/srt'});
     const url = URL.createObjectURL(blob);
-    html += `<div class="lang"><span>${lang.flag} ${lang.name}</span> <a href="${url}" download="WySub_${lang.code}.srt" onclick="showAd()">Download</a></div>`;
+    html += `
+      <div class="lang">
+        <div class="lang-info">${lang.flag} ${lang.name}</div>
+        <button class="download-btn" onclick="downloadWithAd('${url}', 'WySub_${lang.code}.srt')">Download</button>
+      </div>`;
   }
   document.getElementById('downloads').innerHTML = html;
   
+  document.getElementById('loader').style.display = 'none'; // Hide spinner
+  document.getElementById('processBtn').innerText = "PROCESS VIDEO";
+  document.getElementById('processBtn').disabled = false;
+  
   requests--; updateRequests();
-  document.getElementById('processBtn').innerText = "+ PROCESS VIDEO";
 }
 
-let adTimer;
-function showAd(){
-  document.getElementById('adModal').style.display = 'block';
-  adTimer = setTimeout(closeAd, 5000);
-}
-function closeAd(){ 
-  document.getElementById('adModal').style.display = 'none'; 
-  clearTimeout(adTimer);
+// STEP 3: DOWNLOAD + TRIGGER SMARTLINK AD
+function downloadWithAd(url, filename){
+  // 1. Trigger smartlink ad in new tab
+  window.open(SMARTLINK, '_blank');
+  
+  // 2. Download the file
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
 }
 
 document.addEventListener('click', e => {
