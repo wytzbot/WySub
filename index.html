@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WySub - Fast AI Subtitles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial; background: #0a0a0a; color: #fff; }
+    
+    /* PULL TO REFRESH */
+    #pull { height: 60px; text-align: center; line-height: 60px; color: #888; display: none; }
+    
+    /* HEADER + MENU */
+    header { position: sticky; top: 0; background: #000; padding: 15px; display: flex; justify-content: space-between; z-index: 100; }
+    .menu { position: fixed; top: 60px; left: -250px; width: 250px; height: 100%; background: #111; transition: 0.3s; padding: 20px; z-index: 99; }
+    .menu.active { left: 0; }
+    .menu a { display: block; color: #fff; padding: 15px 0; text-decoration: none; border-bottom: 1px solid #222; }
+    
+    /* MAIN */
+    .container { padding: 20px; text-align: center; min-height: 70vh; }
+    h1 { font-size: 28px; margin-bottom: 10px; }
+    .btn { background: #fff; color: #000; padding: 18px 40px; border-radius: 50px; font-size: 18px; font-weight: bold; border: none; margin: 20px 0; width: 90%; max-width: 300px; }
+    .btn:disabled { background: #333; color: #666; }
+    .trust { font-size: 11px; color: #666; }
+    .req { font-size: 14px; color: #0f0; margin: 10px; }
+    
+    /* LANGUAGE CARDS */
+    .lang { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 15px; background: #1a1a1a; border-radius: 12px; }
+    .lang a { background: #fff; color: #000; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+    
+    /* FOOTER */
+    footer { padding: 20px; text-align: center; color: #666; font-size: 12px; }
+    .affiliate { background: #FF0000; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block; margin: 10px; }
+    
+    /* AD MODAL */
+    #adModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000e; z-index: 200; }
+    #adBox { background:#111; margin:15% auto; padding:20px; width:90%; border-radius:12px; }
+  </style>
+</head>
+<body>
+
+<!-- TOP AD BANNER -->
+<script async="async" data-cfasync="false" src="https://potterynaggingformerly.com/7984a298ab57ecc7fdc0acd7fb29b964/invoke.js"></script>
+<div id="container-7984a298ab57ecc7fdc0acd7fb29b964"></div>
+
+<header>
+  <button onclick="toggleMenu()" style="background:none; border:none; color:#fff; font-size:24px">☰</button>
+  <h2>WySub</h2>
+  <div></div>
+</header>
+
+<div id="menu" class="menu">
+  <a href="#" onclick="alert('Privacy Policy')">Privacy Policy</a>
+  <a href="#" onclick="alert('Terms of Service')">Terms</a>
+  <a href="#" onclick="alert('About WySub')">About</a>
+</div>
+
+<div id="pull">↓ Pull to refresh</div>
+
+<div class="container">
+  <h1>WySub 😎</h1>
+  <p>AI Subtitles in 5 Languages. 5MB Data Only.</p>
+
+  <input type="file" id="videoInput" accept="video/*" style="display:none">
+  <button class="btn" id="processBtn" onclick="document.getElementById('videoInput').click()">+ PROCESS VIDEO</button>
+  <p class="trust">THIS PROCESSED BY GEMINI</p>
+  <p class="req" id="requests">Free requests left: 3</p>
+
+  <div id="downloads"></div>
+
+  <footer>
+    <p>Fast. Private. No Video Upload.</p>
+    <a href="YOUR_AFFILIATE_LINK" class="affiliate">WATCH HERE</a>
+  </footer>
+
+  <!-- BOTTOM AD -->
+  <script src="https://potterynaggingformerly.com/4c/e3/be/4ce3beb716c312a093c145adf4d5c5e5.js"></script>
+</div>
+
+<!-- DOWNLOAD AD POPUP -->
+<div id="adModal">
+  <div id="adBox">
+    <script src="https://potterynaggingformerly.com/04/e6/5a/04e65a13e9cb1f4e5641518fea30aa6e.js"></script>
+    <button onclick="closeAd()" style="margin-top:10px; width:100%; padding:10px">Cancel in 5s</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<script>
+const API_URL = 'https://wy-sub.vercel.app/api/subtitle'; // ✅ YOUR LIVE API
+
+const LANGUAGES = [
+  {code:'en', name:'English', flag:'🇺🇸'},
+  {code:'fr', name:'French', flag:'🇫🇷'},
+  {code:'zh', name:'Chinese', flag:'🇨🇳'},
+  {code:'yo', name:'Yoruba', flag:'🇳🇬'},
+  {code:'es', name:'Spanish', flag:'🇪🇸'}
+];
+
+let requests = localStorage.getItem('wysub_requests') || 3;
+let lastReset = localStorage.getItem('wysub_reset');
+let today = new Date().toDateString();
+if(lastReset !== today){ requests = 3; localStorage.setItem('wysub_reset', today); }
+updateRequests();
+
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: false });
+
+function updateRequests(){
+  document.getElementById('requests').innerText = `Free requests left: ${requests}`;
+  localStorage.setItem('wysub_requests', requests);
+  document.getElementById('processBtn').disabled = requests <= 0;
+  if(requests <= 0) document.getElementById('processBtn').innerText = "NO FREE REQUESTS";
+}
+
+function toggleMenu(){ document.getElementById('menu').classList.toggle('active'); }
+
+// PULL TO REFRESH
+let startY = 0;
+document.addEventListener('touchstart', e => startY = e.touches[0].clientY);
+document.addEventListener('touchmove', e => {
+  if(window.scrollY === 0 && e.touches[0].clientY - startY > 80){
+    document.getElementById('pull').style.display = 'block';
+  }
+});
+document.addEventListener('touchend', e => {
+  if(document.getElementById('pull').style.display === 'block'){
+    location.reload();
+  }
+  document.getElementById('pull').style.display = 'none';
+});
+
+document.getElementById('videoInput').onchange = async (e) => {
+  if(requests <= 0) return alert("Daily limit reached. Come back tomorrow");
+  
+  const file = e.target.files[0];
+  document.getElementById('processBtn').innerText = "Processing...";
+  
+  if(!ffmpeg.isLoaded()) await ffmpeg.load();
+  ffmpeg.FS('writeFile', 'video.mp4', await fetchFile(file));
+  await ffmpeg.run('-i', 'video.mp4', '-vn', '-acodec', 'libmp3lame', '-q:a', '9', 'audio.mp3');
+  const audioData = ffmpeg.FS('readFile', 'audio.mp3');
+  const audioBase64 = btoa(String.fromCharCode(...audioData));
+  
+  let html = '';
+  for(let lang of LANGUAGES){
+    const res = await fetch(API_URL, { // ✅ USING YOUR LIVE LINK
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({audioBase64, language: lang.name})
+    });
+    const data = await res.json();
+    const blob = new Blob([data.srt], {type: 'text/srt'});
+    const url = URL.createObjectURL(blob);
+    html += `<div class="lang"><span>${lang.flag} ${lang.name}</span> <a href="${url}" download="WySub_${lang.code}.srt" onclick="showAd()">Download</a></div>`;
+  }
+  document.getElementById('downloads').innerHTML = html;
+  
+  requests--; updateRequests();
+  document.getElementById('processBtn').innerText = "+ PROCESS VIDEO";
+}
+
+let adTimer;
+function showAd(){
+  document.getElementById('adModal').style.display = 'block';
+  adTimer = setTimeout(closeAd, 5000);
+}
+function closeAd(){ 
+  document.getElementById('adModal').style.display = 'none'; 
+  clearTimeout(adTimer);
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('header') && !e.target.closest('.menu')) document.getElementById('menu').classList.remove('active');
+});
+</script>
+
+</body>
+</html>
