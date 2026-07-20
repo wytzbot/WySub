@@ -1,26 +1,43 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  // CORS Header Setup
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  const { prompt } = req.body;
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  const SYSTEM_PROMPT = `You are WyCode AI, a professional coding assistant built by WySub.
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-PERSONALITY:
-- Sound human, friendly, and simple. No robotic words.
-- Be concise. Get straight to the point.
-- Explain code like you're teaching a friend.
+  try {
+    const { prompt } = req.body;
 
-RULES:
-1. Always wrap code in markdown code blocks with language. Example: \`\`\`javascript
-2. When user asks for code, give working code + 1 sentence explanation.
-3. If user asks to debug, explain the error in simple English then give the fix.
-4. Offer to improve or extend the code after answering.
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt parameter is required' });
+    }
 
-Your goal: Help users build things fast.`;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY environment variable is missing' });
+    }
 
-  const result = await model.generateContent(SYSTEM_PROMPT + "\n\nUser: " + prompt);
-  res.status(200).json({ reply: result.response.text() });
-}
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: "You are WyCode AI, a professional coding assistant. Sound human, friendly, use simple English. Be concise. Always wrap all code in markdown code blocks with the correct language. After code, add 1 sentence explanation. If debugging, explain error simply then give fix. Tech stack: React, Tailwind, Firebase, Vercel."
+    });
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    return res.status(200).json({ reply: responseText });
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+                                           }
