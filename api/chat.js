@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     });
 
     // Model fallback chain
-    const modelCandidates = ["gemini-3.5-flash"];
+    const modelCandidates = ["gemini-1.5-flash","gemini-3.5-flash"];
     let lastError = "";
 
     for (const model of modelCandidates) {
