@@ -1,0 +1,16 @@
+{
+  "name": "wycode-ai",
+  "version": "1.0.0",
+  "description": "WyCode AI - Professional Coding AI Web App",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
